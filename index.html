@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#f5f5f0">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; connect-src https://api.github.com; img-src 'self' data:; font-src 'self'; base-uri 'none'; form-action 'none'">
+  <title>意图评测工作台 · Morgan ClawBench</title>
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="#overview" data-view="overview"><span class="brand-mark">M<span>.</span></span><span class="brand-words"><strong>MORGAN CLAWBENCH</strong><small>INTENT EVALUATION / WORKSPACE</small></span></a>
+    <div class="top-actions"><span id="connection-label" class="local-badge">等待连接 GitHub</span><button type="button" id="export-button" class="quiet-button" hidden>导出数据 JSON</button><button type="button" id="disconnect-button" class="quiet-button" hidden>断开连接</button><span class="user-chip">M</span></div>
+  </header>
+  <section id="connect-screen" class="connect-screen">
+    <div class="connect-card"><p class="eyebrow">PRIVATE DATA / GITHUB</p><h1>连接你的评测题库</h1><p>网页在 GitHub Pages，题目与评分保存在单独的私有 GitHub 仓库。连接成功后才能建题和打分。</p>
+      <form id="connect-form"><label>仓库所有者<input name="owner" required value="Givenwels" autocomplete="off" spellcheck="false"></label><label>私有数据仓库<input name="repo" required value="morgantoken-bench-data" autocomplete="off" spellcheck="false"></label><label>GitHub 精细权限令牌<input name="token" type="password" required autocomplete="off" spellcheck="false" placeholder="仅授权此私有仓库的 Contents 读写"></label><button type="submit" class="primary-button">连接并读取题库 →</button><p id="connect-message" role="status"></p></form>
+      <p class="connect-help">令牌只保留在当前页面内存中，刷新后需重新输入。请创建仅对数据仓库有 <strong>Contents: Read and write</strong> 权限的精细权限令牌；不要把令牌写进题库或网页源码。</p></div>
+  </section>
+  <div id="workspace" class="shell" hidden>
+    <aside class="sidebar">
+      <p class="side-caption">WORKSPACE</p>
+      <nav class="nav" aria-label="评测工作台">
+        <button type="button" data-view="overview">总览 <span>01</span></button>
+        <button type="button" data-view="bank">题库建设 <span>02</span></button>
+        <button type="button" data-view="answers">模型回答 <span>03</span></button>
+        <button type="button" data-view="review">GSB 打分 <span>04</span></button>
+        <button type="button" data-view="results">模型结果 <span>05</span></button>
+      </nav>
+      <div class="side-divider"></div>
+      <div class="side-heading"><p class="side-caption">DATASET / PRIVATE GITHUB</p><span id="side-count">0 题</span></div>
+      <div id="question-list" class="question-list"></div>
+      <button type="button" id="new-question-side" class="sidebar-add">＋ 新建题目</button>
+      <div class="sidebar-footer"><strong>数据保存</strong><p>题目、回答与评分保存在已连接的私有 GitHub 仓库。模型 API 稍后配置。</p></div>
+    </aside>
+    <main class="content">
+      <div class="notice"><span>ONLINE</span><p>建题、回答和 GSB 评分写入私有 GitHub 仓库后才算保存。每题可建立多组左右对比；模型 API 稍后配置。</p></div>
+      <p id="app-message" class="app-message" role="status" hidden></p>
+
+      <section id="overview" class="view">
+        <div class="hero"><div><p class="eyebrow">FINAL INTENT / EVALUATION SYSTEM</p><h1>让模型理解能力，<br><em>有据可评。</em></h1><p class="lead">你建设题库，同题收集两份模型回答，再人工判断左边好、右边好、一样好或一样差。每个结论都能追溯到题目与回答。</p><div class="hero-actions"><button type="button" class="primary-button" data-go="bank">开始建设题库 <span>↗</span></button><button type="button" class="link-button" data-go="results">查看模型结果 →</button></div></div><div class="hero-aside"><span>01 / 04</span><p>题库<br>回答<br>对比<br>结果</p></div></div>
+        <div class="section-head"><div><p class="eyebrow">CURRENT WORK</p><h2>评测进度</h2></div><span id="progress-label"></span></div>
+        <div class="stats" id="overview-stats"></div>
+        <div class="section-head shortlist-head"><div><p class="eyebrow">MODEL SHORTLIST</p><h2>首批候选模型</h2></div><span>具体 API 型号与费用后续确定</span></div>
+        <div class="shortlist"><article><span>01 / DEEPSEEK</span><h3>DeepSeek Flash</h3><p>候选 API 型号为 deepseek-flash；正式运行时记录实际返回版本与推理模式。</p></article><article><span>02 / Z.AI</span><h3>GLM-5.3-Flash</h3><p>按你确认的型号记录；API 接入时核对平台使用的模型 ID。</p></article><article><span>03 / STEPFUN</span><h3>阶跃星辰 · Step 5 Preview</h3><p>先作为阶跃候选；实际调用型号和价格以你的账号配置为准。</p></article></div>
+        <p class="shortlist-note">每题可录入三组两两比较：DeepSeek 对 GLM、DeepSeek 对阶跃、GLM 对阶跃。当前回答需手动录入，结果只统计已完成的比较。</p>
+        <div class="section-head method-head"><div><p class="eyebrow">METHOD</p><h2>工作流程</h2></div></div>
+        <div class="method-grid"><article><span>01 / BUILD</span><h3>建立题目</h3><p>录入多轮对话，标记能力维度，由你确认能否进入正式比较。</p></article><article><span>02 / ANSWER</span><h3>收集模型回答</h3><p>先支持在线手动录入；模型调用 API 以后再接。</p></article><article><span>03 / REVIEW</span><h3>人工做 GSB</h3><p>四档判定保留两个不同的平局含义，并记录判断理由。</p></article><article><span>04 / REPORT</span><h3>查看模型表现</h3><p>按模型和能力维度看相对比较分、胜负分布与逐题依据。</p></article></div>
+      </section>
+
+      <section id="bank" class="view" hidden>
+        <div class="page-title"><div><p class="eyebrow">DATASET / CURATION</p><h1>题库建设</h1><p class="lead">题目由你决定。草稿可随时改，只有你标记为“已确认”的题目才计入模型结果。</p></div><button type="button" id="new-question" class="primary-button">新建题目 <span>＋</span></button></div>
+        <div id="bank-empty" class="empty-state"><span>EMPTY DATASET</span><h2>从第一道题开始</h2><p>可以直接录入真实题目；也可先载入一条明确标注为虚构的演示题体验流程。</p><div><button type="button" id="new-question-empty" class="primary-button">新建题目 <span>＋</span></button><button type="button" id="load-demo" class="link-button">载入虚构演示题 →</button></div></div>
+        <div id="bank-workspace" class="work-grid" hidden><div><div class="panel-head"><span class="eyebrow">QUESTION LIST</span><span id="bank-count"></span></div><div id="bank-list" class="bank-list"></div></div><form id="question-form" class="form-panel"><div class="panel-head"><span class="eyebrow">QUESTION EDITOR</span><strong id="editing-id"></strong></div><div class="form-body"><label><span>题目标题</span><input name="title" maxlength="100" required placeholder="例如：多轮需求中的最终目标"></label><label><span>能力维度</span><select name="dimension"><option value="意图识别">意图识别</option><option value="多轮推理">多轮推理</option><option value="信息完整性">信息完整性</option><option value="其他">其他</option></select></label><label><span>对话轮次</span><small>每行一轮。保留原始顺序；不要把参考答案写在题目里。</small><textarea name="turns" rows="8" required placeholder="第一轮用户发言&#10;第二轮用户发言&#10;最后一轮用户发言"></textarea></label><label><span>人工参考意图（可选）</span><small>供你审核题目与解释结果，不会自动计算绝对正确率。</small><textarea name="reference" rows="3" placeholder="用户最后真正希望完成的任务"></textarea></label><label class="check-row"><input type="checkbox" name="approved"><span>我已确认这道题可以用于正式比较</span></label><p id="question-form-message" class="form-message" role="status"></p><div class="form-actions"><button type="submit" class="primary-button">保存题目 <span>→</span></button><button type="button" id="delete-question" class="danger-button">删除这道题</button></div></div></form></div>
+      </section>
+
+      <section id="answers" class="view" hidden>
+        <div class="page-title"><div><p class="eyebrow">MODEL ANSWERS / MANUAL</p><h1>录入模型回答</h1><p class="lead">从 DeepSeek Flash、GLM-5.3-Flash、阶跃星辰中选择一组模型，填写名称和各自回答。正式流程会在线保存；模型调用 API 稍后配置。</p></div><span class="stage-pill">模型调用待配置</span></div>
+        <div id="answers-empty" class="empty-state"><h2>先建立一道题</h2><p>题目保存后，就可以录入左右两个模型的回答。</p><button type="button" class="primary-button" data-go="bank">前往题库 <span>→</span></button></div>
+        <div id="answers-workspace" hidden><div class="question-context"><div><span id="answer-question-id" class="code-pill"></span><strong id="answer-question-title"></strong><span id="answer-question-dimension"></span></div><p id="answer-question-turns"></p></div><div class="pair-toolbar"><label>当前对比 <select id="answer-pair-select"></select></label><button type="button" id="add-pair" class="quiet-button">＋ 新增对比</button><button type="button" id="delete-pair" class="danger-button">删除当前对比</button></div><datalist id="candidate-models"><option value="DeepSeek Flash"><option value="GLM-5.3-Flash"><option value="阶跃星辰 · Step 5 Preview"></datalist><form id="answer-form"><div class="dual-grid"><div class="answer-panel"><div class="panel-head"><span class="eyebrow">LEFT / MODEL A</span><strong>左侧回答</strong></div><div class="form-body"><label><span>模型名称</span><input name="leftName" list="candidate-models" maxlength="100" required placeholder="选择候选模型；可补充精确版本"></label><label><span>回答内容</span><textarea name="leftText" rows="10" required placeholder="粘贴模型对这道题的回答"></textarea></label></div></div><div class="answer-panel"><div class="panel-head"><span class="eyebrow">RIGHT / MODEL B</span><strong>右侧回答</strong></div><div class="form-body"><label><span>模型名称</span><input name="rightName" list="candidate-models" maxlength="100" required placeholder="选择另一候选模型；可补充精确版本"></label><label><span>回答内容</span><textarea name="rightText" rows="10" required placeholder="粘贴另一模型对同一题的回答"></textarea></label></div></div></div><p id="answer-form-message" class="form-message" role="status"></p><div class="form-actions"><button type="submit" class="primary-button">保存两份回答 <span>→</span></button><span class="save-note">回答变更后，原评分会变为待重新评分</span></div></form></div>
+      </section>
+
+      <section id="review" class="view" hidden>
+        <div class="page-title"><div><p class="eyebrow">HUMAN REVIEW / GSB</p><h1>并排比较，人工判断。</h1><p class="lead">只依据当前题目与两份回答打分。平局请区分“一样好”和“一样差”。</p></div><span class="stage-pill">四档 GSB</span></div>
+        <div id="review-pair-toolbar" class="pair-toolbar" hidden><label>当前对比 <select id="review-pair-select"></select></label></div><div id="review-empty" class="empty-state"><h2>还没有可评分的对比</h2><p id="review-empty-reason">请先完成题库建设和模型回答录入。</p><button type="button" class="primary-button" data-go="answers">前往模型回答 <span>→</span></button></div>
+        <div id="review-workspace" hidden><div class="question-context"><div><span id="review-question-id" class="code-pill"></span><strong id="review-question-title"></strong><span id="review-question-dimension"></span></div><p id="review-question-turns"></p><p id="review-reference" class="reference-note"></p></div><div id="comparison" class="dual-grid"></div><form id="gsb-form" class="gsb-box"><div><p class="eyebrow">YOUR DECISION</p><h2>哪一边更好？</h2><p>两个平局都各给双方 0.5 比较分，但分别统计。</p></div><div class="gsb-options" role="radiogroup" aria-label="GSB 评分"><label><input type="radio" name="gsb" value="left"><span>左边好</span></label><label><input type="radio" name="gsb" value="right"><span>右边好</span></label><label><input type="radio" name="gsb" value="both_good"><span>一样好</span></label><label><input type="radio" name="gsb" value="both_bad"><span>一样差</span></label></div><label class="reason-label"><span>评分理由（可选）</span><textarea name="reason" rows="3" placeholder="说清为什么更好，或为什么双方都好 / 都差"></textarea></label><p id="gsb-form-message" class="form-message" role="status"></p><button type="submit" class="primary-button">保存 GSB 评分 <span>→</span></button></form></div>
+      </section>
+
+      <section id="results" class="view" hidden>
+        <div class="page-title"><div><p class="eyebrow">MODEL RESULTS / PAIRWISE</p><h1>模型结果</h1><p class="lead">展示已确认题目上的模型相对表现。比较分反映两两对战，不代表绝对意图识别准确率。</p></div></div>
+        <div id="results-empty" class="empty-state"><h2>还没有正式评分</h2><p>确认题目、录入两份回答并完成四档 GSB 后，这里会生成模型结果。</p><button type="button" class="primary-button" data-go="review">前往打分 <span>→</span></button></div>
+        <div id="results-workspace" hidden><div class="section-head"><div><p class="eyebrow">PAIRWISE SCORE</p><h2>模型表现</h2></div><span id="results-count"></span></div><div id="model-cards" class="model-cards"></div><div class="section-head"><div><p class="eyebrow">DIMENSION VIEW</p><h2>意图识别等能力维度</h2></div></div><div id="dimension-table" class="table-wrap"></div><div class="section-head"><div><p class="eyebrow">CASE EVIDENCE</p><h2>逐题评分记录</h2></div></div><div id="case-list" class="case-list"></div><div class="metric-note"><strong>口径说明</strong><p>左胜记左 1 分、右 0 分；右胜相反；一样好和一样差都各记 0.5 分，另行显示这两类平局。只统计已确认题目且回答与评分均为当前版本的记录。人工参考意图尚未形成校准过的绝对评分，因此这里不显示“准确率”。</p></div></div>
+      </section>
+    </main>
+  </div>
+  <script src="./github-store.js"></script>
+  <script src="./app.js"></script>
+</body>
+</html>

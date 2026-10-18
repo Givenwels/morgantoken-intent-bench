@@ -16,7 +16,7 @@
   <section id="connect-screen" class="connect-screen">
     <div class="connect-card"><p class="eyebrow">PRIVATE DATA / GITHUB</p><h1>连接你的评测题库</h1><p>网页在 GitHub Pages，题目与评分保存在单独的私有 GitHub 仓库。连接成功后才能建题和打分。</p>
       <form id="connect-form"><label>仓库所有者<input name="owner" required value="Givenwels" autocomplete="off" spellcheck="false"></label><label>私有数据仓库<input name="repo" required value="morgantoken-bench-data" autocomplete="off" spellcheck="false"></label><label>GitHub 精细权限令牌<input name="token" type="password" required autocomplete="off" spellcheck="false" placeholder="仅授权此私有仓库的 Contents 读写"></label><button type="submit" class="primary-button">连接并读取题库 →</button><p id="connect-message" role="status"></p></form>
-      <p class="connect-help">令牌只保留在当前页面内存中，刷新后需重新输入。请创建仅对数据仓库有 <strong>Contents: Read and write</strong> 权限的精细权限令牌；不要把令牌写进题库或网页源码。</p></div>
+      <p class="connect-help">令牌只保留在当前页面内存中，刷新后需重新输入。<a href="https://github.com/settings/personal-access-tokens/new?name=Morgan-Intent-Bench&amp;target_name=Givenwels&amp;contents=write" target="_blank" rel="noopener noreferrer">在 GitHub 创建精细权限令牌 ↗</a>，选择 <strong>Only select repositories → morgantoken-bench-data</strong>，只授予 <strong>Contents: Read and write</strong>。不要把令牌写进题库或网页源码。</p></div>
   </section>
   <div id="workspace" class="shell" hidden>
     <aside class="sidebar">

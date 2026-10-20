@@ -1,0 +1,11 @@
+{
+  "name": "morgantoken-intent-bench",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "test": "node --test tests/*.test.js"
+  },
+  "dependencies": {
+    "mammoth": "1.13.0"
+  }
+}

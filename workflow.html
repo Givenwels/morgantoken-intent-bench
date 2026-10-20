@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#f5f5f0">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; connect-src https://api.github.com; img-src 'self' data:; font-src 'self'; base-uri 'none'; form-action 'none'">
+  <title>完整评测流程 · Morgan ClawBench</title>
+  <link rel="stylesheet" href="./styles.css">
+  <link rel="stylesheet" href="./workflow.css">
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="./index.html"><span class="brand-mark">M<span>.</span></span><span class="brand-words"><strong>MORGAN CLAWBENCH</strong><small>INTENT EVALUATION / WORKFLOW</small></span></a>
+    <div class="top-actions"><span id="connection-label" class="local-badge">等待连接</span><button id="reload-button" class="quiet-button" type="button" hidden>重新载入</button><button id="disconnect-button" class="quiet-button" type="button" hidden>断开</button><a href="./index.html" class="quiet-button">旧版工作台 ↗</a></div>
+  </header>
+
+  <section id="connect-screen" class="connect-screen">
+    <div class="connect-card"><p class="eyebrow">PRIVATE DATA / GITHUB</p><h1>打开评测工作台</h1><p>题库与评测记录保存在你的私有 GitHub 仓库。令牌仅保留在当前页面内存中。</p>
+      <form id="connect-form">
+        <label>仓库所有者<input name="owner" value="Givenwels" required autocomplete="off"></label>
+        <label>私有数据仓库<input name="repo" value="morgantoken-bench-data" required autocomplete="off"></label>
+        <label>精细权限令牌<input name="token" type="password" required autocomplete="off" placeholder="仅授权这个仓库的 Contents 读写"></label>
+        <button class="primary-button" type="submit">连接并读取数据 →</button><p id="connect-message" role="status"></p>
+      </form>
+      <p class="connect-help">使用 <a href="https://github.com/settings/personal-access-tokens/new?name=Morgan-Intent-Bench&amp;target_name=Givenwels&amp;contents=write" target="_blank" rel="noopener noreferrer">GitHub 精细权限令牌 ↗</a>，只选择 <strong>morgantoken-bench-data</strong> 并授予 <strong>Contents: Read and write</strong>。</p>
+    </div>
+  </section>
+
+  <div id="workspace" class="workflow-shell" hidden>
+    <aside class="workflow-sidebar">
+      <p class="side-caption">EVALUATION / 5 STEPS</p>
+      <nav class="nav" aria-label="评测步骤">
+        <button type="button" data-view="bank">题库导入与确认 <span>01</span></button>
+        <button type="button" data-view="runs">模型先答 <span>02</span></button>
+        <button type="button" data-view="human">人工独立作答 <span>03</span></button>
+        <button type="button" data-view="audit">意图核验与 GSB <span>04</span></button>
+        <button type="button" data-view="report">评测报告 <span>05</span></button>
+      </nav>
+      <div class="side-divider"></div>
+      <div class="sidebar-footer"><strong>当前运行</strong><p id="sidebar-run">尚未选择运行</p><p>模型答案在人工提交前保持隐藏。原始回答与评分分别保存。</p></div>
+    </aside>
+
+    <main class="workflow-main">
+      <div id="app-message" class="app-message" role="status" hidden></div>
+
+      <section id="bank" class="workflow-view">
+        <div class="page-title"><div><p class="eyebrow">01 / DATASET</p><h1>先确认要测什么</h1><p class="lead">导入 Word 后逐题检查边界和最终意图。只有已确认的题目能进入运行。</p></div><span class="stage-pill" id="bank-count">0 题</span></div>
+        <div class="workflow-grid">
+          <article class="workflow-panel"><div class="panel-head"><span class="eyebrow">WORD IMPORT</span><strong>.docx → 草稿</strong></div><div class="workflow-panel-body">
+            <label class="field">选择 Word 文档<input id="docx-input" type="file" accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document"></label>
+            <p class="small-note">文档只在浏览器本地解析；预览和确认后才保存结构化题目。自动编号、图片和表格可能需要手工补齐。</p>
+            <div id="import-status" role="status" class="small-note"></div><div id="import-warnings" class="warning-list"></div>
+            <div id="import-preview" class="import-preview"></div>
+            <button id="save-import" type="button" class="primary-button" hidden>保存为待审核草稿 →</button>
+          </div></article>
+          <article class="workflow-panel"><div class="panel-head"><span class="eyebrow">QUESTION BANK</span><strong>逐题审核</strong></div><div class="workflow-panel-body"><div class="inline-actions"><button id="new-question" type="button" class="quiet-button">＋ 手动建题</button><span id="approved-count" class="small-note"></span></div><div id="bank-list" class="select-list"></div></div></article>
+        </div>
+        <form id="question-form" class="workflow-panel editor-panel" hidden><div class="panel-head"><span class="eyebrow">QUESTION EDITOR</span><strong id="question-code"></strong></div><div class="workflow-panel-body form-grid">
+          <label class="field">题目标题<input name="title" maxlength="100" required></label>
+          <label class="field">能力维度<select name="dimension"><option>意图识别</option><option>多轮推理</option><option>信息完整性</option><option>其他</option></select></label>
+          <label class="field span-all">对话轮次 <small>每行一轮。保留原始先后顺序。</small><textarea name="turns" rows="8" required></textarea></label>
+          <label class="field span-all">最终意图 <small>只供人工核验，不发送给答题模型。</small><textarea name="reference" rows="3"></textarea></label>
+          <label class="field">仍需满足的要求 <small>每行一项。</small><textarea name="retained" rows="4"></textarea></label>
+          <label class="field">被后文覆盖的旧要求 <small>每行一项。</small><textarea name="superseded" rows="4"></textarea></label>
+          <label class="field span-all">缺失材料或不可评条件<textarea name="missing" rows="2"></textarea></label>
+          <label class="check-row span-all"><input type="checkbox" name="approved"><span>我已核对题目与意图卡，同意进入正式运行</span></label>
+          <div class="inline-actions span-all"><button class="primary-button" type="submit">保存题目 →</button><span id="question-status" role="status"></span></div>
+        </div></form>
+      </section>
+
+      <section id="runs" class="workflow-view" hidden>
+        <div class="page-title"><div><p class="eyebrow">02 / MACHINE FIRST</p><h1>先让模型做题</h1><p class="lead">每个模型对每道题生成一份原始答案。API 密钥以后在私有仓库 Secrets 配置；现在也可导入你的 Agent 平台结果。</p></div></div>
+        <div class="workflow-grid">
+          <article class="workflow-panel"><div class="panel-head"><span class="eyebrow">NEW RUN</span><strong>冻结题目与模型</strong></div><div class="workflow-panel-body">
+            <p class="small-note">已确认题目</p><div id="run-question-list" class="check-list"></div>
+            <p class="small-note section-gap">候选模型</p><div id="run-model-list" class="check-list"></div>
+            <label class="field section-gap">自动答题来源<select id="run-mode"><option value="agent">我的 Agent 平台</option><option value="api">模型 API（GitHub Actions）</option></select></label>
+            <button id="create-run" class="primary-button" type="button">创建评测运行 →</button>
+          </div></article>
+          <article class="workflow-panel"><div class="panel-head"><span class="eyebrow">RUN ARCHIVE</span><strong>选择一次运行</strong></div><div class="workflow-panel-body"><div id="run-list" class="select-list"></div></div></article>
+        </div>
+        <article id="run-detail" class="workflow-panel editor-panel" hidden><div class="panel-head"><span class="eyebrow">ACTIVE RUN</span><strong id="run-title"></strong></div><div class="workflow-panel-body">
+          <p id="run-summary" class="small-note"></p><div class="inline-actions"><button id="download-agent-request" type="button" class="quiet-button">下载 Agent 做题包 JSON ↓</button><button id="dispatch-run" type="button" class="quiet-button">通过 API 开始答题 ↗</button><button id="refresh-run" type="button" class="quiet-button">刷新模型结果 ↻</button></div>
+          <div id="agent-import-panel"><label class="field section-gap">导入 Agent 平台输出的 JSON<input id="agent-result-input" type="file" accept=".json,application/json"></label><p class="small-note">导入前检查运行 ID、全部题目、版本、模型名及重复项；原始答案写入私有仓库。</p></div>
+          <div id="run-answer-status" class="answer-status"></div>
+        </div></article>
+      </section>
+
+      <section id="human" class="workflow-view" hidden>
+        <div class="page-title"><div><p class="eyebrow">03 / HUMAN BASELINE</p><h1>你也独立做一遍</h1><p class="lead">按原题完成实际任务。首次提交前不会展示任何模型答案；提交后原稿锁定，更改会产生新版本。</p></div></div>
+        <div id="human-empty" class="empty-state"><h2>等待模型答案</h2><p>先在“模型先答”创建运行，并收到至少一份模型回答。</p></div>
+        <div id="human-workspace" hidden><label class="field narrow-select">选择题目<select id="human-question-select"></select></label><article class="workflow-panel editor-panel"><div class="panel-head"><span class="eyebrow">SAME TASK / NO MODEL ANSWER SHOWN</span><strong id="human-question-title"></strong></div><div class="workflow-panel-body"><pre id="human-question-text" class="question-text"></pre><form id="human-form"><label class="field">你的实际任务答案<textarea name="answer" rows="11" required placeholder="直接完成题目最终要求的任务"></textarea></label><div class="inline-actions"><button class="primary-button" type="submit">提交人工答案 →</button><span id="human-save-status" class="small-note"></span></div></form><div id="human-locked" hidden><div class="status-banner">已提交原稿。现在可以进入意图核验；如需修改，会保留旧版本。</div><pre id="human-saved-answer" class="answer-text"></pre><button id="human-new-revision" class="quiet-button" type="button">新建修订版本</button></div></div></article></div>
+      </section>
+
+      <section id="audit" class="workflow-view" hidden>
+        <div class="page-title"><div><p class="eyebrow">04 / HUMAN REVIEW</p><h1>核验意图，再做 GSB</h1><p class="lead">先核对人与模型是否完成最终任务，再把两份模型回答并排做四档判断。机器评审结果将来可单独接入。</p></div></div>
+        <div id="audit-empty" class="empty-state"><h2>还没有可复核的题目</h2><p>需要先有模型答案和你的独立答案。</p></div>
+        <div id="audit-workspace" hidden><label class="field narrow-select">选择题目<select id="audit-question-select"></select></label><article class="workflow-panel"><div class="panel-head"><span class="eyebrow">INTENT CARD</span><strong id="audit-question-title"></strong></div><div class="workflow-panel-body"><pre id="audit-question-text" class="question-text"></pre><div id="intent-card" class="intent-card"></div></div></article>
+          <div class="section-head"><div><p class="eyebrow">TASK COMPLETION</p><h2>逐份核验</h2></div></div><div id="intent-review-list" class="review-list"></div>
+          <div class="section-head"><div><p class="eyebrow">PAIRWISE / GSB</p><h2>模型两两比较</h2></div></div><label class="field narrow-select">选择对比<select id="comparison-select"></select></label><div id="comparison-workspace"></div>
+        </div>
+      </section>
+
+      <section id="report" class="workflow-view" hidden>
+        <div class="page-title"><div><p class="eyebrow">05 / REPORT</p><h1>可追溯的评测报告</h1><p class="lead">意图完成率、人机任务结果一致率与模型间 GSB 各自展示；没有完成复核的题不会进入质量分母。</p></div><div class="report-actions"><button id="export-report-md" type="button" class="quiet-button">下载 Markdown ↓</button><button id="export-report-json" type="button" class="quiet-button">下载 JSON ↓</button><button id="print-report" type="button" class="quiet-button">打印报告 ↗</button></div></div>
+        <div id="report-empty" class="empty-state"><h2>选择一次运行</h2><p>完成模型答题、人工独立作答和评分后，这里会逐步显示结果。</p></div><div id="report-workspace" hidden><p id="report-meta" class="small-note"></p><div id="report-stats" class="report-stats"></div><div id="report-models" class="report-models"></div><div class="section-head"><div><p class="eyebrow">CASE EVIDENCE</p><h2>逐题记录</h2></div></div><div id="report-cases" class="case-list"></div><div class="metric-note"><strong>口径说明</strong><p>四档 GSB 的“一样好”和“一样差”在相对比较分中都各记 0.5，但分开计数。人机一致率表示人工核验的任务结果档位相同；双方都未通过也会计入一致，因此请同时看最终意图完成率和双未通过数量。所有指标以当前运行的分子、分母为准。</p></div></div>
+      </section>
+    </main>
+  </div>
+
+  <script src="./vendor/mammoth.browser.min.js"></script>
+  <script src="./word-import.js"></script>
+  <script src="./workflow-core.js"></script>
+  <script src="./workflow-store.js"></script>
+  <script src="./workflow-app.js"></script>
+</body>
+</html>

@@ -67,6 +67,28 @@ test('createRun freezes approved legacy questions and model labels', () => {
   assert.equal(run.questions[0].version, 3);
 });
 
+test('test points and observable rubric are frozen and coverage excludes drafts and demos', () => {
+  const questions = [
+    { id: 1, version: 1, title: '修改输出形式', dimension: '意图识别', testPoint: '后续修正与覆盖',
+      subPoint: '保留时间约束', successCriteria: ['输出中文短信', '保留时间'], failureSignals: ['继续写英文邮件'],
+      turns: ['先写邮件', '改成短信'], reference: '中文短信', approved: true },
+    { id: 2, version: 1, title: '旧题', dimension: '意图识别', turns: ['做任务'], reference: '做任务', approved: true },
+    { id: 3, version: 1, title: '草稿', dimension: '信息完整性', testPoint: '信息缺失与澄清', approved: false },
+    { id: 4, version: 1, title: '演示', approved: true, isDemo: true }
+  ];
+  const coverage = Core.summarizeCoverage(questions);
+  assert.deepEqual({ total: coverage.total, approved: coverage.approved, drafts: coverage.drafts, rubricReady: coverage.rubricReady },
+    { total: 3, approved: 2, drafts: 1, rubricReady: 1 });
+  assert.deepEqual(coverage.testPoints, { '后续修正与覆盖': 1, '未标注': 1 });
+  const run = Core.createRun(questions.slice(0, 2), [models[0]], 'coverage-run', '2026-10-20T00:00:00Z');
+  questions[0].successCriteria[0] = '后来被改动';
+  assert.equal(run.questions[0].successCriteria[0], '输出中文短信');
+  assert.equal(run.questions[0].testPoint, '后续修正与覆盖');
+  const report = Core.summarizeReport(run, [], [], [], []);
+  assert.equal(report.coverage.rubricReady, 1);
+  assert.equal(report.coverage.testPoints['未标注'], 1);
+});
+
 test('import rejects all invalid records atomically and reports each boundary error', () => {
   const run = fixtureRun();
   const valid = { runId: run.id, questionId: 1, questionVersion: 2, modelId: 'alpha', text: '有效答案' };

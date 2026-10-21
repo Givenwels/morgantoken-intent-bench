@@ -84,7 +84,8 @@
         turns: copy(question.turns),
         reference: String(question.reference || '')
       };
-      for (const field of ['source', 'retained', 'superseded', 'missing', 'intentCardVersion', 'isDemo']) {
+      for (const field of ['source', 'retained', 'superseded', 'missing', 'intentCardVersion', 'isDemo',
+        'testPoint', 'subPoint', 'successCriteria', 'failureSignals']) {
         if (question[field] !== undefined) snapshot[field] = copy(question[field]);
       }
       return snapshot;
@@ -306,6 +307,26 @@
     return { numerator, denominator, value: denominator ? numerator / denominator : null };
   }
 
+  function summarizeCoverage(questions) {
+    const rows = Array.isArray(questions) ? questions.filter((question) => question && !question.isDemo) : [];
+    const countBy = (value) => value.reduce((counts, label) => {
+      const key = String(label || '').trim() || '未标注';
+      counts[key] = (counts[key] || 0) + 1;
+      return counts;
+    }, {});
+    const approved = rows.filter((question) => question.approved === true);
+    return {
+      total: rows.length,
+      approved: approved.length,
+      drafts: rows.length - approved.length,
+      rubricReady: approved.filter((question) =>
+        Array.isArray(question.successCriteria) && question.successCriteria.some((item) => String(item).trim())).length,
+      dimensions: countBy(approved.map((question) => question.dimension)),
+      testPoints: countBy(approved.map((question) => question.testPoint)),
+      subPoints: countBy(approved.map((question) => question.subPoint))
+    };
+  }
+
   function selectLatest(map, key, record, index) {
     const parsed = Date.parse(record.createdAt || record.savedAt || '');
     const timestamp = Number.isFinite(parsed) ? parsed : -Infinity;
@@ -424,6 +445,7 @@
       return {
         questionId: question.id, questionVersion: question.version,
         title: question.title, dimension: question.dimension,
+        testPoint: question.testPoint || '', subPoint: question.subPoint || '',
         human: humanAnswer ? {
           answerKey: humanAnswer.answerKey, revision: humanAnswer.revision,
           text: humanAnswer.text, review: humanReview || null
@@ -532,9 +554,10 @@
       models: modelMetrics,
       questions: questionResults,
       comparisons: reportedComparisons,
-      overall
+      overall,
+      coverage: summarizeCoverage(run.questions.map((question) => ({ ...question, approved: true })))
     };
   }
 
-  return { createRun, validateImportedAnswers, buildComparisons, summarizeReport, answerKey, humanKey };
+  return { createRun, validateImportedAnswers, buildComparisons, summarizeReport, summarizeCoverage, answerKey, humanKey };
 });

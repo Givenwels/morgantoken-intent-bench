@@ -131,7 +131,29 @@
   function makeQuestion(draft, id) {
     return { id, title: draft.title || '未命名题目', dimension: draft.dimension || '意图识别', turns: draft.turns || [],
       reference: draft.reference || '', retained: draft.retained || [], superseded: draft.superseded || [], missing: draft.missing || '',
+      testPoint: draft.testPoint || '', subPoint: draft.subPoint || '',
+      successCriteria: draft.successCriteria || [], failureSignals: draft.failureSignals || [],
       source: draft.source || null, approved: false, version: 1, comparisons: [blankPair()] };
+  }
+  function renderCoverage(target, coverage) {
+    target.replaceChildren();
+    const summary = add(target, 'div', 'coverage-summary');
+    [['正式题目', coverage.approved], ['待审核草稿', coverage.drafts],
+      ['有通过条件', coverage.rubricReady + ' / ' + coverage.approved],
+      ['未写通过条件', coverage.approved - coverage.rubricReady]].forEach(([label, value]) => {
+      const item = add(summary, 'article'); add(item, 'strong', '', value); add(item, 'span', '', label);
+    });
+    const groups = add(target, 'div', 'coverage-groups');
+    [['一级考点', coverage.testPoints], ['二级考点', coverage.subPoints],
+      ['能力维度', coverage.dimensions]].forEach(([label, counts]) => {
+      const group = add(groups, 'div'); add(group, 'h3', '', label);
+      const entries = Object.entries(counts).sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], 'zh-CN'));
+      if (!entries.length) add(group, 'p', 'small-note', '暂无已确认题目');
+      entries.forEach(([name, count]) => {
+        const row = add(group, 'div', 'coverage-row'); add(row, 'span', '', name); add(row, 'strong', '', count + ' 题');
+        const bar = add(row, 'progress'); bar.max = coverage.approved; bar.value = count;
+      });
+    });
   }
   function renderImport() {
     const preview = $('import-preview'); preview.replaceChildren();
@@ -147,6 +169,7 @@
   }
   function renderBank() {
     const list = $('bank-list'); list.replaceChildren();
+    renderCoverage($('bank-coverage'), WorkflowCore.summarizeCoverage(app.bank.questions));
     $('bank-count').textContent = app.bank.questions.length + ' 题';
     $('approved-count').textContent = app.bank.questions.filter((q) => q.approved && !q.isDemo).length + ' 道可运行';
     app.bank.questions.forEach((question) => {
@@ -162,8 +185,12 @@
     const form = $('question-form');
     form.elements.title.value = question.title || '';
     form.elements.dimension.value = question.dimension || '意图识别';
+    form.elements.testPoint.value = question.testPoint || '';
+    form.elements.subPoint.value = question.subPoint || '';
     form.elements.turns.value = (question.turns || []).join('\n');
     form.elements.reference.value = question.reference || '';
+    form.elements.successCriteria.value = (question.successCriteria || []).join('\n');
+    form.elements.failureSignals.value = (question.failureSignals || []).join('\n');
     form.elements.retained.value = (question.retained || []).join('\n');
     form.elements.superseded.value = (question.superseded || []).join('\n');
     form.elements.missing.value = question.missing || '';
@@ -240,7 +267,10 @@
   }
   function renderIntentCard(question) {
     const card = $('intent-card'); card.replaceChildren();
-    [['最终任务', question.reference], ['仍需满足', (question.retained || []).join('\n')], ['被后文覆盖', (question.superseded || []).join('\n')], ['缺失材料', question.missing || '未标注']].forEach(([label, value]) => {
+    [['最终任务', question.reference], ['一级 / 二级考点', [question.testPoint, question.subPoint].filter(Boolean).join(' / ')],
+      ['通过条件', (question.successCriteria || []).join('\n')], ['失败信号', (question.failureSignals || []).join('\n')],
+      ['仍需满足', (question.retained || []).join('\n')], ['被后文覆盖', (question.superseded || []).join('\n')],
+      ['缺失材料', question.missing || '未标注']].forEach(([label, value]) => {
       const part = add(card, 'article'); add(part, 'strong', '', label); add(part, 'p', '', value || '未填写');
     });
   }
@@ -256,6 +286,15 @@
     [['', '选择意图完成情况'], ...Object.entries(VERDICTS)].forEach(([value, label]) => { const option = add(select, 'option', '', label); option.value = value; });
     select.value = saved?.label || '';
     add(line, 'span', 'small-note', saved ? '已复核 · ' + new Date(saved.createdAt).toLocaleString('zh-CN') : '尚未复核');
+    const criteria = add(form, 'div', 'requirement-list');
+    if ((question.successCriteria || []).length) add(criteria, 'strong', 'small-note', '逐条核对通过条件');
+    (question.successCriteria || []).forEach((criterion, index) => {
+      const label = add(criteria, 'label', 'check-row');
+      const input = add(label, 'input'); input.type = 'checkbox';
+      input.checked = Boolean(saved?.criteria?.find((item) => item.text === criterion)?.met);
+      input.dataset.criterion = String(index);
+      add(label, 'span', '', '满足：' + criterion);
+    });
     const requirements = add(form, 'div', 'requirement-list');
     (question.retained || []).forEach((requirement, index) => {
       const label = add(requirements, 'label', 'check-row');
@@ -268,11 +307,17 @@
     const button = add(form, 'button', 'primary-button', '保存核验'); button.type = 'submit';
     form.addEventListener('submit', (event) => {
       event.preventDefault(); busy(async () => { if (!VERDICTS[select.value]) throw new Error('请选择意图完成情况。');
+      const criterionMarks = (question.successCriteria || []).map((text, index) => ({
+        text, met: Boolean(criteria.querySelector('input[data-criterion="' + index + '"]')?.checked)
+      }));
+      if (select.value === 'pass' && criterionMarks.some((item) => !item.met))
+        throw new Error('判为“通过”前，请逐条确认通过条件；若有遗漏请选择“部分通过”或“未通过”。');
       const review = {
         runId: app.run.id, questionId: question.id, questionVersion: question.version,
         subjectId, subjectType: subjectId === 'human' ? 'human' : 'model',
         ...(subjectId === 'human' ? { humanRevision: answer.revision } : { modelId: subjectId }),
         answerKey: key, label: select.value, reason: reason.value.trim(), source: 'human', createdAt: new Date().toISOString(),
+        criteria: criterionMarks,
         requirements: (question.retained || []).map((text, index) => ({ text, met: Boolean(requirements.querySelector('input[data-requirement="' + index + '"]')?.checked) }))
       };
       const path = runPath('reviews/' + question.id + '-' + subjectId + '-' + key.replace(/[^A-Za-z0-9-]/g, '-') + '-' + crypto.randomUUID().slice(0, 8) + '.json');
@@ -365,6 +410,7 @@
     $('report-meta').textContent = '运行 ' + report.runId + ' · ' + new Date(report.runCreatedAt).toLocaleString('zh-CN') +
       ' · ' + report.overall.questionCount + ' 题 · ' + (unlocked ? '可导出' : '人工答题未完成，逐题模型原文暂时隐藏');
     const stats = $('report-stats'); stats.replaceChildren();
+    renderCoverage($('report-coverage'), report.coverage || WorkflowCore.summarizeCoverage(app.run.questions.map((q) => ({ ...q, approved: true }))));
     [
       ['题目数', report.overall.questionCount, '冻结题目与版本'],
       ['调用成功率', percent(report.overall.callSuccessRate), fraction(report.overall.callSuccessRate) + ' 次调用'],
@@ -398,8 +444,11 @@
     report.questions.forEach((question) => {
       const card = add(cases, 'article', 'case-item');
       add(card, 'strong', '', 'M' + String(question.questionId).padStart(3, '0') + ' · ' + question.title);
-      add(card, 'p', 'case-meta', question.dimension + ' · 题目版本 ' + question.questionVersion +
+      add(card, 'p', 'case-meta', question.dimension + (question.testPoint ? ' · ' + question.testPoint : '') +
+        (question.subPoint ? ' / ' + question.subPoint : '') + ' · 题目版本 ' + question.questionVersion +
         ' · 人工 ' + (question.human?.review ? VERDICTS[question.human.review.label] : question.human ? '待核验' : '未作答'));
+      const rubric = app.run.questions.find((item) => String(item.id) === String(question.questionId));
+      add(card, 'p', 'case-meta', '通过条件：' + ((rubric?.successCriteria || []).join('；') || '旧题未定义'));
       if (!question.human) { add(card, 'p', '', '人工尚未独立作答，本题模型原文保持隐藏。'); return; }
       const detail = add(card, 'div', 'case-detail');
       add(detail, 'p', '', '人工答案：' + question.human.text.slice(0, 350) + (question.human.text.length > 350 ? '…' : ''));
@@ -433,19 +482,26 @@
       percent(metric.agreement.rate) + ' (' + fraction(metric.agreement.rate) + ') | ' + percent(metric.gsb.score) +
       ' (' + metric.gsb.points + '/' + metric.gsb.denominator + ') | ' + metric.gsb.both_good + ' / ' + metric.gsb.both_bad +
       ' | ' + metric.intent.unreviewed + ' / ' + metric.intent.unassessable + ' |'));
-    lines.push('', '## 逐题依据', '');
+    lines.push('', '## 本次题目覆盖', '', '- 有通过条件：' + report.coverage.rubricReady + ' / ' + report.coverage.approved,
+      ...Object.entries(report.coverage.testPoints).map(([name, count]) => '- 一级考点「' + name + '」：' + count + ' 题'),
+      '', '## 逐题依据', '');
     report.questions.forEach((item) => {
       const question = run.questions.find((q) => q.id === item.questionId);
       lines.push('### ' + item.title + '（题目 ' + item.questionId + ' / v' + item.questionVersion + '）', '',
-        '**能力维度：** ' + item.dimension, '', '**题目：**', '', ...(question?.turns || []), '', '**最终意图：** ' + (question?.reference || '未填写'), '');
+        '**能力维度：** ' + item.dimension, '**考点：** ' + [question?.testPoint, question?.subPoint].filter(Boolean).join(' / '),
+        '', '**题目：**', '', ...(question?.turns || []), '', '**最终意图：** ' + (question?.reference || '未填写'),
+        '', '**通过条件：**', ...(question?.successCriteria || []).map((criterion) => '- ' + criterion),
+        '', '**失败信号：**', ...(question?.failureSignals || []).map((signal) => '- ' + signal), '');
       if (item.human) lines.push('**人工答案（第 ' + item.human.revision + ' 版）：**', '', item.human.text, '',
         '**人工核验：** ' + (VERDICTS[item.human.review?.label] || '待核验') + (item.human.review?.reason ? '；' + item.human.review.reason : ''),
+        ...(item.human.review?.criteria || []).map((criterion) => '- ' + (criterion.met ? '满足' : '未满足') + '通过条件：' + criterion.text),
         ...(item.human.review?.requirements || []).map((requirement) => '- ' + (requirement.met ? '满足' : '未满足') + '：' + requirement.text), '');
       item.models.forEach((model) => lines.push('**' + modelLabel(model.modelId) + '：** ' +
         (model.text ? '\n\n' + model.text : model.callStatus + (model.errorCode ? ' (' + model.errorCode + ')' : '')), '',
         '**实际调用型号：** ' + (model.providerModel || '未记录') + '；来源：' + (model.source || '未记录') +
           '；attempt：' + (model.attempt || '—') + '；耗时：' + (model.latencyMs == null ? '未记录' : model.latencyMs + ' ms'),
         '**意图核验：** ' + (VERDICTS[model.review?.label] || '待核验') + (model.review?.reason ? '；' + model.review.reason : ''),
+        ...(model.review?.criteria || []).map((criterion) => '- ' + (criterion.met ? '满足' : '未满足') + '通过条件：' + criterion.text),
         ...(model.review?.requirements || []).map((requirement) => '- ' + (requirement.met ? '满足' : '未满足') + '：' + requirement.text), ''));
       report.comparisons.filter((row) => row.questionId === item.questionId).forEach((row) => lines.push('- GSB ' +
         modelLabel(row.left.modelId) + ' vs ' + modelLabel(row.right.modelId) + '：' + (row.rating ? GSB[row.rating.choice] + '；' + (row.rating.reason || '无理由') : '待评分')));
@@ -522,11 +578,17 @@
     const form = event.currentTarget;
     const update = {
       title: form.elements.title.value.trim(), dimension: form.elements.dimension.value,
+      testPoint: form.elements.testPoint.value, subPoint: form.elements.subPoint.value.trim(),
       turns: lines(form.elements.turns.value), reference: form.elements.reference.value.trim(),
+      successCriteria: lines(form.elements.successCriteria.value), failureSignals: lines(form.elements.failureSignals.value),
       retained: lines(form.elements.retained.value), superseded: lines(form.elements.superseded.value), missing: form.elements.missing.value.trim()
     };
     if (!update.title || !update.turns.length) throw new Error('题目标题和对话轮次不能为空。');
     if (form.elements.approved.checked && !update.reference) throw new Error('确认题目前，请写明最终意图。');
+    if (form.elements.approved.checked && !update.testPoint && !question.approved)
+      throw new Error('确认新题前，请选择一级考点。');
+    if (form.elements.approved.checked && !update.successCriteria.length && !question.approved)
+      throw new Error('确认新题前，请至少写一条可观察的通过条件。');
     const previous = structuredClone(app.bank);
     const changed = Object.keys(update).some((key) => JSON.stringify(question[key] || (Array.isArray(update[key]) ? [] : '')) !== JSON.stringify(update[key]));
     Object.assign(question, update);

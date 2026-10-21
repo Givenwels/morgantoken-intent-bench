@@ -79,7 +79,22 @@
 .case-item{display:block}.case-item .case-meta{font-size:10px;color:#8a998c;margin-top:4px}
 .case-item .case-detail{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}
 .case-item .case-detail p{margin:0}
-@media(max-width:1050px){.workflow-shell{grid-template-columns:200px minmax(0,1fr)}.workflow-grid{grid-template-columns:1fr}.report-models{grid-template-columns:repeat(2,1fr)}}
+.connect-screen{width:min(100%,1360px);margin:auto;grid-template-columns:minmax(0,1.25fr) minmax(340px,.75fr);gap:28px;align-items:center}
+.connect-card{width:100%}
+.method-intro{padding:36px 12px 36px 0;color:var(--ink)}
+.method-intro h2{max-width:680px;margin:14px 0 20px;font-size:clamp(30px,3.4vw,48px);line-height:1.22;letter-spacing:-.045em;color:var(--dark)}
+.method-intro>p:not(.eyebrow){max-width:700px;font-size:13px;line-height:1.9;color:#617667}
+.method-steps{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin:26px 0}
+.method-steps article{padding:16px;background:#f7faf5;border:1px solid var(--line);border-radius:7px}
+.method-steps strong,.method-steps span{display:block}.method-steps strong{font-size:11px;color:var(--dark);margin-bottom:8px}.method-steps span{font-size:10px;line-height:1.7;color:#687d6c}
+.method-intro .method-example{border-left:3px solid var(--accent);background:#f8fbf6;padding:12px 14px}
+.coverage-panel{margin:0 0 20px}.coverage-panel .workflow-panel-body{padding:19px 22px}
+.coverage-summary{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px}
+.coverage-summary article{border:1px solid var(--line);border-radius:5px;padding:12px;background:#fbfdf9}
+.coverage-summary strong,.coverage-summary span{display:block}.coverage-summary strong{font-size:20px;color:var(--dark)}.coverage-summary span{margin-top:4px;font-size:10px;color:#7b8d7d}
+.coverage-groups{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:24px;margin-top:14px}.coverage-groups h3{font-size:11px;margin:8px 0 10px;color:var(--dark)}
+.coverage-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 12px;font-size:10px;color:#687d6c;margin:10px 0}.coverage-row strong{color:var(--dark)}.coverage-row progress{grid-column:1/-1;width:100%;height:5px;accent-color:var(--accent)}
+@media(max-width:1050px){.workflow-shell{grid-template-columns:200px minmax(0,1fr)}.workflow-grid{grid-template-columns:1fr}.report-models,.coverage-groups{grid-template-columns:repeat(2,1fr)}.connect-screen{grid-template-columns:1fr;max-width:760px}.method-intro{padding-bottom:0}}
 @media(max-width:760px){.workflow-shell{display:block}.workflow-sidebar{position:static;width:100%;height:auto;padding:10px 16px;border-bottom:1px solid var(--line)}.workflow-sidebar .side-caption,.workflow-sidebar .side-divider,.workflow-sidebar .sidebar-footer{display:none}.workflow-sidebar .nav{display:flex;overflow-x:auto;gap:6px}.workflow-sidebar .nav button{white-space:nowrap;width:auto;min-width:max-content;padding:9px 10px}.workflow-sidebar .nav button span{display:none}.workflow-main{padding:16px 18px 70px}.workflow-view .page-title{padding-top:20px}.form-grid,.intent-card,.comparison-grid{grid-template-columns:1fr}.report-stats{grid-template-columns:repeat(2,1fr)}}
-@media(max-width:520px){.answer-status,.report-models{grid-template-columns:1fr}.report-actions{display:block}.report-actions button{margin-right:13px}.case-item .case-detail{grid-template-columns:1fr}.workflow-panel-body{padding:16px}}
+@media(max-width:520px){.answer-status,.report-models,.coverage-groups{grid-template-columns:1fr}.coverage-summary{grid-template-columns:repeat(2,1fr)}.method-steps{grid-template-columns:1fr}.report-actions{display:block}.report-actions button{margin-right:13px}.case-item .case-detail{grid-template-columns:1fr}.workflow-panel-body{padding:16px}}
 @media print{.topbar,.workflow-sidebar,.report-actions,.app-message,.workflow-view:not(#report){display:none!important}.workflow-shell{display:block}.workflow-main{padding:0;width:100%}#report{display:block!important}.report-models,.report-stats{break-inside:avoid}.case-item{break-inside:avoid}body{background:#fff}}
